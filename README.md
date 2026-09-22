@@ -28,6 +28,10 @@ To build a `Debug` version of the desktop app, there are no additional requireme
 
 To build a `Release` version of the desktop app, follow the instructions for your operating system.
 
+#### GitHub Actions
+
+The **Build Windows** workflow builds the Windows x64 release on pushes and pull requests to `master`, and supports manual runs. The `win-x64` artifact contains `win-x64.zip`, produced by `app/build.sh`.
+
 #### Release – Windows (64-bit)
 
 1. Install Debian in WSL and open a terminal in the project folder.
@@ -41,6 +45,8 @@ Note: The build script expects `dotnet.exe` to be installed in `C:\Program Files
 1. Install the `zip` package from your repository.
 2. Run the `app/build.sh` script.
 3. Read the [Distribution](#distribution) section below.
+
+The `app/build.sh` script accepts optional build targets: `win-x64`, `linux-x64`, and `portable`. For example, `bash build.sh win-x64` builds only the Windows archive. With no arguments, all targets are built.
 
 #### Distribution
 

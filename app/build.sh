@@ -24,26 +24,34 @@ makezip() {
   popd
 }
 
-rm -rf "./bin"
+targets=("$@")
+if [ "${#targets[@]}" -eq 0 ]; then
+  targets=(win-x64 linux-x64 portable)
+fi
 
-dedicated_runtimes=(win-x64 linux-x64)
+for target in "${targets[@]}"; do
+  case "$target" in
+    win-x64|linux-x64|portable) ;;
+    *) echo "Unknown build target: $target" >&2; exit 1 ;;
+  esac
+done
+
 skipped_portable_runtimes=(browser-wasm linux-mips64 linux-s390x linux-ppc64le)
 
-# Dedicated Runtimes
+rm -rf "./bin"
 
-for cfg in "${dedicated_runtimes[@]}"; do
-  dotnet publish Desktop -c Release -r "$cfg" -o "./bin/$cfg" --self-contained true
-  makezip "$cfg"
+for target in "${targets[@]}"; do
+  if [ "$target" == "portable" ]; then
+    dotnet publish Desktop -c Release -o "./bin/portable" -p:PublishSingleFile=false -p:PublishTrimmed=false --self-contained false
+
+    rm "./bin/portable/DiscordHistoryTracker"
+
+    for runtime in "${skipped_portable_runtimes[@]}"; do
+      rm -rf "./bin/portable/runtimes/$runtime"
+    done
+  else
+    dotnet publish Desktop -c Release -r "$target" -o "./bin/$target" --self-contained true
+  fi
+
+  makezip "$target"
 done
-
-# Portable
-
-dotnet publish Desktop -c Release -o "./bin/portable" -p:PublishSingleFile=false -p:PublishTrimmed=false --self-contained false
-
-rm "./bin/portable/DiscordHistoryTracker"
-
-for runtime in "${skipped_portable_runtimes[@]}"; do
-  rm -rf "./bin/portable/runtimes/$runtime"
-done
-
-makezip "portable"
