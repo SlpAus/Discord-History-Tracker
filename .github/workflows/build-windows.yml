@@ -34,9 +34,8 @@ jobs:
       - name: Build Windows release
         run: bash build.sh win-x64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: win-x64
           path: app/bin/win-x64.zip
-          compression-level: 0
+          archive: false
           if-no-files-found: error

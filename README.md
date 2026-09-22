@@ -30,7 +30,7 @@ To build a `Release` version of the desktop app, follow the instructions for you
 
 #### GitHub Actions
 
-The **Build Windows** workflow builds the Windows x64 release on pushes and pull requests to `master`, and supports manual runs. The `win-x64` artifact contains `win-x64.zip`, produced by `app/build.sh`.
+The **Build Windows** workflow builds the Windows x64 release on pushes and pull requests to `master`, and supports manual runs. It uploads `win-x64.zip`, produced by `app/build.sh`.
 
 #### Release – Windows (64-bit)
 
