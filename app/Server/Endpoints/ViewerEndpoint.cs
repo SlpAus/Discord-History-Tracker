@@ -16,12 +16,17 @@ sealed class ViewerEndpoint(ResourceLoader resources) : BaseEndpoint {
 		string path = (string?) request.RouteValues["path"] ?? "index.html";
 		string resourcePath = "Viewer/" + path;
 		
-		byte[]? resourceBytes;
+		byte[]? resourceBytes = await resources.ReadExternalBytesAsyncIfExists(resourcePath);
+		if (resourceBytes != null) {
+			response.Headers.CacheControl = "no-store";
+			await WriteFileIfFound(response, path, resourceBytes, cancellationToken);
+			return;
+		}
 		
 		await cacheSemaphore.WaitAsync(cancellationToken);
 		try {
 			if (!cache.TryGetValue(resourcePath, out resourceBytes)) {
-				cache[resourcePath] = resourceBytes = await resources.ReadBytesAsyncIfExists(resourcePath);
+				cache[resourcePath] = resourceBytes = await resources.ReadBytesAsyncIfExists(resourcePath, allowExternalOverride: false);
 			}
 		} finally {
 			cacheSemaphore.Release();

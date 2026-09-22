@@ -9,21 +9,36 @@ using System.Threading.Tasks;
 namespace DHT.Utils.Resources;
 
 public sealed class ResourceLoader(Assembly assembly) {
-	private Stream? TryGetEmbeddedStream(string filename) {
-		Stream? stream = null;
-		
-		foreach (string embeddedName in assembly.GetManifestResourceNames()) {
-			if (embeddedName.Replace(oldChar: '\\', newChar: '/') == filename) {
-				stream = assembly.GetManifestResourceStream(embeddedName);
-				break;
-			}
+	private Stream? TryGetExternalStream(string embeddedName) {
+		// Only call this for a known manifest resource. Request paths must not
+		// turn the resource loader into a general-purpose file server.
+		string normalizedName = embeddedName.Replace(oldChar: '\\', newChar: '/');
+		string externalPath = Path.Combine(AppContext.BaseDirectory, normalizedName.Replace('/', Path.DirectorySeparatorChar));
+		try {
+			return File.OpenRead(externalPath);
+		} catch (FileNotFoundException) {
+			return null;
+		} catch (DirectoryNotFoundException) {
+			return null;
 		}
-		
-		return stream;
+	}
+
+	private string? FindEmbeddedName(string filename) {
+		filename = filename.Replace(oldChar: '\\', newChar: '/');
+		return assembly.GetManifestResourceNames().FirstOrDefault(name => name.Replace(oldChar: '\\', newChar: '/') == filename);
+	}
+
+	private Stream? TryGetResourceStream(string filename, bool allowExternalOverride = true) {
+		string? embeddedName = FindEmbeddedName(filename);
+		if (embeddedName == null) {
+			return null;
+		}
+
+		return (allowExternalOverride ? TryGetExternalStream(embeddedName) : null) ?? assembly.GetManifestResourceStream(embeddedName);
 	}
 	
-	private Stream GetEmbeddedStream(string filename) {
-		return TryGetEmbeddedStream(filename) ?? throw new ArgumentException("Missing embedded resource: " + filename);
+	private Stream GetResourceStream(string filename) {
+		return TryGetResourceStream(filename) ?? throw new ArgumentException("Missing embedded resource: " + filename);
 	}
 	
 	private async Task<string> ReadTextAsync(Stream stream) {
@@ -32,26 +47,34 @@ public sealed class ResourceLoader(Assembly assembly) {
 	}
 	
 	private async Task<byte[]> ReadBytesAsync(Stream stream) {
-		using var memoryStream = new MemoryStream();
-		await stream.CopyToAsync(memoryStream);
-		return memoryStream.ToArray();
+		using (stream) {
+			using var memoryStream = new MemoryStream();
+			await stream.CopyToAsync(memoryStream);
+			return memoryStream.ToArray();
+		}
 	}
 	
 	public async Task<string> ReadTextAsync(string filename) {
-		return await ReadTextAsync(GetEmbeddedStream(filename));
+		return await ReadTextAsync(GetResourceStream(filename));
 	}
 	
-	public async Task<byte[]?> ReadBytesAsyncIfExists(string filename) {
-		return TryGetEmbeddedStream(filename) is {} stream ? await ReadBytesAsync(stream) : null;
+	public async Task<byte[]?> ReadBytesAsyncIfExists(string filename, bool allowExternalOverride = true) {
+		return TryGetResourceStream(filename, allowExternalOverride) is {} stream ? await ReadBytesAsync(stream) : null;
 	}
-	
+
+	public async Task<byte[]?> ReadExternalBytesAsyncIfExists(string filename) {
+		string? embeddedName = FindEmbeddedName(filename);
+		return embeddedName != null && TryGetExternalStream(embeddedName) is {} stream ? await ReadBytesAsync(stream) : null;
+	}
+
 	public async Task<string> ReadJoinedAsync(string path, char separator, string[] order) {
-		List<(string, Stream)> resourceNames = [];
+		path = path.Replace(oldChar: '\\', newChar: '/');
+		List<(string NormalizedName, string EmbeddedName)> resourceNames = [];
 		
 		foreach (string embeddedName in assembly.GetManifestResourceNames()) {
 			string embeddedNameNormalized = embeddedName.Replace(oldChar: '\\', newChar: '/');
 			if (embeddedNameNormalized.StartsWith(path)) {
-				resourceNames.Add((embeddedNameNormalized, assembly.GetManifestResourceStream(embeddedName)!));
+				resourceNames.Add((embeddedNameNormalized, embeddedName));
 			}
 		}
 		
@@ -62,7 +85,8 @@ public sealed class ResourceLoader(Assembly assembly) {
 			return key == -1 ? order.Length : key;
 		}
 		
-		foreach ((_, Stream stream) in resourceNames.OrderBy(item => GetOrderKey(item.Item1))) {
+		foreach ((_, string embeddedName) in resourceNames.OrderBy(item => GetOrderKey(item.NormalizedName))) {
+			using Stream stream = TryGetExternalStream(embeddedName) ?? assembly.GetManifestResourceStream(embeddedName)!;
 			joined.Append(await ReadTextAsync(stream)).Append(separator);
 		}
 		

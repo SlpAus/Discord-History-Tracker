@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>13</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../app/Utils/Resources/ResourceLoader.cs" Link="ResourceLoader.cs" />
+    <EmbeddedResource Include="Fixtures/alpha.txt" LogicalName="ResourceLoaderTestOverrides\alpha.txt" />
+    <EmbeddedResource Include="Fixtures/beta.txt" LogicalName="ResourceLoaderTestOverrides/beta.txt" />
+  </ItemGroup>
+</Project>

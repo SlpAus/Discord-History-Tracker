@@ -8,6 +8,8 @@ If you are interested in **building from source code**, continue reading the [bu
 
 This branch is dedicated to the Discord History Tracker desktop app. If you are looking for the older browser-only version, visit the [master-browser-only](https://github.com/chylex/Discord-History-Tracker/tree/master-browser-only) branch.
 
+Resources can be customized without rebuilding the application using [external resource overrides](docs/external-resources.md).
+
 # Build Instructions
 
 ### Setup
